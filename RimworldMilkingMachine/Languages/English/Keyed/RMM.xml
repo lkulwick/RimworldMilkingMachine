@@ -4,4 +4,13 @@
   <RMM_MilkExtractor_StatusInUse>{0} extracting - {1} complete.</RMM_MilkExtractor_StatusInUse>
   <RMM_MilkExtractor_DebugCheck>RMM debug: fullness={0}% pad={1} reason={2}</RMM_MilkExtractor_DebugCheck>
   <RMM_MilkExtractor_DebugSelectPad>RMM debug: {0} targeting {1}</RMM_MilkExtractor_DebugSelectPad>
+  <RMM_MilkExtractor_Stored>Stored: {0}/{1}</RMM_MilkExtractor_Stored>
+  <RMM_MilkExtractor_NeedsEmptying>Needs emptying.</RMM_MilkExtractor_NeedsEmptying>
+  <RMM_MilkExtractor_Empty_Label>Empty</RMM_MilkExtractor_Empty_Label>
+  <RMM_MilkExtractor_Empty_Desc>Order a colonist to empty stored milk onto the ground.</RMM_MilkExtractor_Empty_Desc>
+  <RMM_MilkExtractor_Empty_Disabled>No milk stored.</RMM_MilkExtractor_Empty_Disabled>
+  <RMM_MilkExtractor_EmptyRequested>Emptying requested.</RMM_MilkExtractor_EmptyRequested>
+  <RMM_MilkExtractor_AutoThreshold_Label>Auto-empty at: {0}%</RMM_MilkExtractor_AutoThreshold_Label>
+  <RMM_MilkExtractor_AutoThreshold_Desc>Choose the fullness level at which colonists will automatically empty the milk extractor (applies to all milk extractors on this map).</RMM_MilkExtractor_AutoThreshold_Desc>
+  <RMM_MilkExtractor_AutoThreshold_Option>Set to {0}%</RMM_MilkExtractor_AutoThreshold_Option>
 </LanguageData>

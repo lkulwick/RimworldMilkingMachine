@@ -25,6 +25,7 @@
         <minimumFullness>0.8</minimumFullness>
         <ticksPerFullness>2400</ticksPerFullness>
         <minimumSessionTicks>600</minimumSessionTicks>
+        <storageCapacity>75</storageCapacity>
       </li>
     </comps>
     <drawerType>MapMeshAndRealTime</drawerType>
