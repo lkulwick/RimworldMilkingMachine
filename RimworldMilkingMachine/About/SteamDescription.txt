@@ -1,0 +1,27 @@
+[h1]Rimworld Milking Machine[/h1]
+
+Automate dairy chores with a self-service extractor pad. Milkable colony animals seek the pad once they are full, lie down for a short session, and the machine deposits their milk beside the building without pawns needing a milking work order.
+
+[h2]Features[/h2]
+[list]
+[*] Automated milk extractor pad unlocked via the new [i]Automated milking systems[/i] research.
+[*] Animals reserve the pad and release milk automatically; colonists stand down.
+[*] Debug action "Fill milk fullness" helps troubleshoot or showcase the setup.
+[/list]
+
+[h2]How to Use[/h2]
+[olist]
+[*] Research [i]Automated milking systems[/i].
+[*] Build the milk extractor pad from the Production tab (300 W power draw).
+[*] Keep milkable animals assigned to your colony; they will head to the pad when nearly full.
+[/olist]
+
+[h2]Compatibility & Notes[/h2]
+[list]
+[*] Designed for RimWorld 1.6.
+[*] No Harmony patches included yet; other milking overhauls may conflict.
+[*] Debug logs prefixed with "RMM" can be enabled via dev mode for troubleshooting.
+[/list]
+
+[h2]Credits[/h2]
+Built with VS Code tooling and inspired by the Biotech mech-charger workflow. Feedback and pull requests welcome.
