@@ -262,9 +262,9 @@ namespace RimworldMilkingMachine
         protected override IEnumerable<Toil> MakeNewToils()
         {
             this.FailOnDestroyedNullOrForbidden(ExtractorInd);
-            this.FailOn(() => !Extractor.CanAcceptPawn(pawn));
+            this.FailOn(() => !pawn.CanReserve(job.targetA, 1, -1, null, true));
             yield return Toils_Goto.GotoThing(ExtractorInd, PathEndMode.InteractionCell)
-                .FailOn(() => !Extractor.CanAcceptPawn(pawn));
+                .FailOn(() => !pawn.CanReserve(job.targetA, 1, -1, null, true));
 
             Toil extract = ToilMaker.MakeToil("MilkExtractor");
             extract.defaultCompleteMode = ToilCompleteMode.Never;
@@ -274,6 +274,11 @@ namespace RimworldMilkingMachine
                 pawn.pather.StopDead();
                 pawn.rotationTracker.FaceTarget(Extractor.Position);
                 Extractor.MilkComp.BeginSession(pawn);
+                if (!pawn.Reserve(pawn, job, 1, -1, null, false))
+                {
+                    Log.Message($"RMM debug: {pawn.LabelShort} could not self-reserve during extractor job.");
+                    EndJobWith(JobCondition.Incompletable);
+                }
             };
             extract.tickAction = () =>
             {
@@ -294,6 +299,10 @@ namespace RimworldMilkingMachine
             {
                 bool cancelled = !Extractor.MilkComp.WasCompleted;
                 Extractor.MilkComp.EndSession(pawn, cancelled);
+                if (pawn.MapHeld != null)
+                {
+                    pawn.MapHeld.reservationManager.Release(pawn, pawn, job);
+                }
             });
             extract.WithProgressBar(ExtractorInd, () => Extractor.MilkComp.ProgressPercent, true, -0.5f);
             yield return extract;
@@ -302,30 +311,52 @@ namespace RimworldMilkingMachine
 
     public class JobGiver_UseMilkExtractor : ThinkNode_JobGiver
     {
+        static JobGiver_UseMilkExtractor()
+        {
+            Log.Message("RMM debug: JobGiver_UseMilkExtractor initialized.");
+        }
+
         protected override Job TryGiveJob(Pawn pawn)
         {
+            if (pawn != null && pawn.RaceProps != null && pawn.RaceProps.Animal)
+            {
+                Log.Message("RMM debug: evaluating pawn " + pawn.LabelShort + " (faction=" + (pawn.Faction?.ToString() ?? "none") + ")");
+            }
+
             if (pawn == null || pawn.Faction == null || pawn.Downed || pawn.Dead)
             {
+                LogDebug(pawn, null, "invalid-pawn", 0f, null);
                 return null;
             }
 
             if (!pawn.RaceProps.Animal)
             {
+                LogDebug(pawn, null, "not-animal", 0f, null);
                 return null;
             }
 
             CompMilkable compMilkable = pawn.TryGetComp<CompMilkable>();
-            if (compMilkable == null || compMilkable.Fullness < 0.8f)
+            float fullnessPercent = compMilkable?.Fullness ?? 0f;
+            if (compMilkable == null || fullnessPercent < 0.8f)
             {
+                LogDebug(pawn, null, compMilkable == null ? "no-comp" : "below-threshold", fullnessPercent, null);
                 return null;
             }
 
             Building_AnimalMilkExtractor extractor = FindClosestExtractor(pawn, compMilkable);
             if (extractor == null)
             {
+                LogDebug(pawn, null, "no-extractor", fullnessPercent, null);
                 return null;
             }
 
+            if (!pawn.CanReserve(extractor, 1, -1, null, false))
+            {
+                LogDebug(pawn, extractor, "already-reserved", fullnessPercent, null);
+                return null;
+            }
+
+            LogDebug(pawn, extractor, "job-assigned", fullnessPercent, extractor.Position.ToString());
             Job job = JobMaker.MakeJob(RMM_DefOf.RMM_UseMilkExtractor, extractor);
             job.overrideFacing = extractor.Rotation;
             return job;
@@ -341,13 +372,13 @@ namespace RimworldMilkingMachine
 
             Predicate<Thing> validator = thing =>
             {
-                Building_AnimalMilkExtractor extractor = thing as Building_AnimalMilkExtractor;
-                if (extractor == null)
+                Building_AnimalMilkExtractor candidate = thing as Building_AnimalMilkExtractor;
+                if (candidate == null)
                 {
                     return false;
                 }
 
-                return extractor.CanAcceptPawn(pawn);
+                return candidate.CanAcceptPawn(pawn);
             };
 
             Thing found = GenClosest.ClosestThingReachable(
@@ -359,7 +390,29 @@ namespace RimworldMilkingMachine
                 9999f,
                 validator);
 
-            return found as Building_AnimalMilkExtractor;
+            Building_AnimalMilkExtractor selectedExtractor = found as Building_AnimalMilkExtractor;
+            if (selectedExtractor != null)
+            {
+                LogDebug(pawn, selectedExtractor, "found-extractor", compMilkable.Fullness, selectedExtractor.Position.ToString());
+            }
+            else
+            {
+                LogDebug(pawn, null, "no-path", compMilkable.Fullness, null);
+            }
+
+            return selectedExtractor;
+        }
+
+        private static void LogDebug(Pawn pawn, Building_AnimalMilkExtractor extractor, string reason, float fullness, string extra)
+        {
+            string padLabel = extractor != null ? extractor.Label : "none";
+            string message = "RMM debug: " + pawn.LabelShort + " -> " + padLabel + " (" + reason + ", fullness=" + fullness.ToStringPercent() + ")";
+            if (!extra.NullOrEmpty())
+            {
+                message += " extra=" + extra;
+            }
+
+            Log.Message(message);
         }
     }
 
@@ -400,4 +453,63 @@ namespace RimworldMilkingMachine
             }
         }
     }
+
+    [StaticConstructorOnStartup]
+    public static class RMM_ThinkTreeDebug
+    {
+        static RMM_ThinkTreeDebug()
+        {
+            try
+            {
+                ThinkTreeDef animalTree = DefDatabase<ThinkTreeDef>.GetNamedSilentFail("Animal");
+                if (animalTree == null)
+                {
+                    Log.Warning("RMM debug: Animal think tree not found.");
+                    return;
+                }
+
+                ThinkNode priorityRoot = animalTree.thinkRoot;
+                if (priorityRoot.subNodes == null)
+                {
+                    priorityRoot.subNodes = new List<ThinkNode>();
+                }
+
+                int existingIndex = -1;
+                for (int i = 0; i < priorityRoot.subNodes.Count; i++)
+                {
+                    if (priorityRoot.subNodes[i] is JobGiver_UseMilkExtractor)
+                    {
+                        existingIndex = i;
+                        break;
+                    }
+                }
+
+                int desiredIndex = Math.Min(priorityRoot.subNodes.Count, 6);
+                if (existingIndex == -1)
+                {
+                    var node = new JobGiver_UseMilkExtractor();
+                    priorityRoot.subNodes.Insert(desiredIndex, node);
+                    Log.Message("RMM debug: inserted milk extractor job giver at index " + desiredIndex);
+                }
+                else if (existingIndex > desiredIndex)
+                {
+                    ThinkNode node = priorityRoot.subNodes[existingIndex];
+                    priorityRoot.subNodes.RemoveAt(existingIndex);
+                    priorityRoot.subNodes.Insert(desiredIndex, node);
+                    Log.Message($"RMM debug: moved milk extractor job giver from index {existingIndex} to {desiredIndex}");
+                }
+                else
+                {
+                    Log.Message("RMM debug: milk extractor job giver already at priority index " + existingIndex);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("RMM debug: Exception while inspecting think tree: " + ex);
+            }
+        }
+
+    }
 }
+
+

@@ -2,4 +2,6 @@
 <LanguageData>
   <RMM_MilkExtractor_StatusIdle>Idle.</RMM_MilkExtractor_StatusIdle>
   <RMM_MilkExtractor_StatusInUse>{0} extracting - {1} complete.</RMM_MilkExtractor_StatusInUse>
+  <RMM_MilkExtractor_DebugCheck>RMM debug: fullness={0}% pad={1} reason={2}</RMM_MilkExtractor_DebugCheck>
+  <RMM_MilkExtractor_DebugSelectPad>RMM debug: {0} targeting {1}</RMM_MilkExtractor_DebugSelectPad>
 </LanguageData>
