@@ -6,14 +6,10 @@
 	<supportedVersions>
 		<li>1.6</li>
 	</supportedVersions>
-
-	<!-- No mod dependencies required. Harmony is not used in this version. -->
-
 	<incompatibleWith>
-		<!-- <li>username.modname</li> -->
 	</incompatibleWith>
 
 	<description>
-Adds an automated milk extractor pad with internal storage and a refuel‑style UI. Milkable colony animals head to the pad when nearly full, complete a short session, and their milk is stored up to capacity (overflow drops near the pad). Colonists can perform a Basic work job to empty the extractor on demand or automatically when a configurable map‑wide threshold is reached. No Harmony patches required.
+Adds an automated milk extractor pad with internal storage and a refuel-style UI. Milkable colony animals head to the pad when nearly full, complete a short session, and their milk is stored up to capacity (overflow drops near the pad). Colonists can perform a Basic work job to empty the extractor on demand or automatically when a configurable map-wide threshold is reached. No Harmony patches required.
 	</description>
 </ModMetaData>

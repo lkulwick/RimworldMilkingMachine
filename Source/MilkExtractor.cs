@@ -286,12 +286,27 @@ namespace RimworldMilkingMachine
             return compMilkable.Fullness >= Props.minimumFullness;
         }
 
+        public override void PostSpawnSetup(bool respawningAfterLoad)
+        {
+            base.PostSpawnSetup(respawningAfterLoad);
+            // Ensure power draw reflects current state on spawn/load
+            if (IsOccupied)
+            {
+                ApplyActivePowerUsage();
+            }
+            else
+            {
+                ApplyIdlePowerUsage();
+            }
+        }
+
         public void BeginSession(Pawn pawn)
         {
             currentPawn = pawn;
             progressTicks = 0f;
             completedSuccessfully = false;
             aborted = false;
+            ApplyActivePowerUsage();
 
             CompMilkable compMilkable = pawn.TryGetComp<CompMilkable>();
             startingFullness = compMilkable?.Fullness ?? 0f;
@@ -340,6 +355,7 @@ namespace RimworldMilkingMachine
             startingFullness = 0f;
             completedSuccessfully = false;
             aborted = false;
+            ApplyIdlePowerUsage();
         }
 
         public string GetInspectString()
@@ -436,6 +452,24 @@ namespace RimworldMilkingMachine
                 TryRequestEmptyJob();
             }
         }
+
+        private void ApplyIdlePowerUsage()
+        {
+            var pow = parent?.TryGetComp<CompPowerTrader>();
+            if (pow == null) return;
+            float watts = IsBigVariant ? 60f : 30f;
+            pow.PowerOutput = -watts;
+        }
+
+        private void ApplyActivePowerUsage()
+        {
+            var pow = parent?.TryGetComp<CompPowerTrader>();
+            if (pow == null) return;
+            float watts = IsBigVariant ? 100f : 60f;
+            pow.PowerOutput = -watts;
+        }
+
+        private bool IsBigVariant => Capacity >= 300;
 
         internal static void SetFullness(CompHasGatherableBodyResource comp, float value)
         {
