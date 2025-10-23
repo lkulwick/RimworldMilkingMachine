@@ -264,7 +264,13 @@ namespace RimworldMilkingMachine
                 return false;
             }
 
-            // Block usage if full or currently being emptied.
+            // Respect forbid: if the pad is forbidden to this pawn/faction, don't use it
+            if (parent.IsForbidden(pawn))
+            {
+                return false;
+            }
+
+            // Block usage if full
             if (IsFull)
             {
                 return false;
@@ -640,7 +646,7 @@ namespace RimworldMilkingMachine
                 return null;
             }
 
-            if (!pawn.CanReserve(extractor, 1, -1, null, false))
+            if (extractor.IsForbidden(pawn) || !pawn.CanReserve(extractor, 1, -1, null, false))
             {
                 LogDebug(pawn, extractor, "already-reserved", fullnessPercent, null);
                 return null;
@@ -670,7 +676,23 @@ namespace RimworldMilkingMachine
                     return false;
                 }
 
-                return candidate.CanAcceptPawn(pawn);
+                if (candidate.IsForbidden(pawn))
+                {
+                    return false;
+                }
+                if (!candidate.CanAcceptPawn(pawn))
+                {
+                    return false;
+                }
+                if (!pawn.CanReserve(candidate, 1, -1, null, false))
+                {
+                    return false;
+                }
+                if (!pawn.CanReach(candidate, PathEndMode.InteractionCell, Danger.Some))
+                {
+                    return false;
+                }
+                return true;
             };
 
             Thing found = GenClosest.ClosestThingReachable(

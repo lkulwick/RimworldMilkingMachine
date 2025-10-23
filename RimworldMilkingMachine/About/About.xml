@@ -7,20 +7,13 @@
 		<li>1.6</li>
 	</supportedVersions>
 
-	<modDependencies>
-		<!-- <li>
-			<packageId>brrainz.harmony</packageId>
-			<displayName>Harmony</displayName>
-			<steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
-			<downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
-		</li> -->
-	</modDependencies>
+	<!-- No mod dependencies required. Harmony is not used in this version. -->
 
 	<incompatibleWith>
 		<!-- <li>username.modname</li> -->
 	</incompatibleWith>
 
 	<description>
-Adds an automated milk extractor pad. Once researched, milkable colony animals will head to the pad when nearly full, lie still for a short session, and the extractor deposits their milk beside the building without requiring a handler.
-</description>
+Adds an automated milk extractor pad with internal storage and a refuel‑style UI. Milkable colony animals head to the pad when nearly full, complete a short session, and their milk is stored up to capacity (overflow drops near the pad). Colonists can perform a Basic work job to empty the extractor on demand or automatically when a configurable map‑wide threshold is reached. No Harmony patches required.
+	</description>
 </ModMetaData>
