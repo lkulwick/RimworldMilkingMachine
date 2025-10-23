@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using LudeonTK;
 using RimWorld;
@@ -9,9 +10,12 @@ using Verse.AI;
 
 namespace RimworldMilkingMachine
 {
+    [StaticConstructorOnStartup]
     public class Building_AnimalMilkExtractor : Building
     {
         private CompAnimalMilkExtractor cachedComp;
+        private static readonly Material StorageBarFilledMat = SolidColorMaterials.SimpleSolidColorMaterial(Color.white);
+        private static readonly Material StorageBarUnfilledMat = SolidColorMaterials.SimpleSolidColorMaterial(new Color(0.3f, 0.3f, 0.3f, 1f));
 
         public CompAnimalMilkExtractor MilkComp
         {
@@ -46,6 +50,74 @@ namespace RimworldMilkingMachine
 
             return text;
         }
+
+        public GenDraw.FillableBarRequest BarDrawData => def.building.BarDrawDataFor(Rotation);
+
+        protected override void DrawAt(Vector3 drawLoc, bool flip = false)
+        {
+            base.DrawAt(drawLoc, flip);
+            if (MilkComp == null || MilkComp.Capacity <= 0)
+            {
+                return;
+            }
+            float fill = MilkComp.StoredTotal / Mathf.Max(1f, MilkComp.Capacity);
+            GenDraw.FillableBarRequest req = BarDrawData;
+            req.center = DrawPos + Vector3.up * 0.1f;
+            req.fillPercent = Mathf.Clamp01(fill);
+            req.filledMat = StorageBarFilledMat;
+            req.unfilledMat = StorageBarUnfilledMat;
+            req.rotation = Rotation;
+            GenDraw.DrawFillableBar(req);
+        }
+
+        public override IEnumerable<Gizmo> GetGizmos()
+        {
+            foreach (var g in base.GetGizmos())
+            {
+                yield return g;
+            }
+
+            var milkComp = MilkComp;
+            if (milkComp != null && milkComp.Capacity > 0)
+            {
+                var cmd = new Command_Action
+                {
+                    defaultLabel = "RMM_MilkExtractor_Empty_Label".Translate(),
+                    defaultDesc = "RMM_MilkExtractor_Empty_Desc".Translate(),
+                    action = () => milkComp.RequestEmpty()
+                };
+                if (milkComp.StoredTotal <= 0)
+                {
+                    cmd.Disable("RMM_MilkExtractor_Empty_Disabled".Translate());
+                }
+                yield return cmd;
+
+                // Auto-empty threshold control (map-wide)
+                MapComponent_RMM comp = MapComponent_RMM.Get(Map);
+                float pct = Mathf.Clamp01(comp?.AutoEmptyThreshold ?? 0.75f) * 100f;
+                var thresholdCmd = new Command_Action
+                {
+                    defaultLabel = "RMM_MilkExtractor_AutoThreshold_Label".Translate(pct.ToString("F0")),
+                    defaultDesc = "RMM_MilkExtractor_AutoThreshold_Desc".Translate(),
+                    action = () => OpenThresholdMenu(comp)
+                };
+                yield return thresholdCmd;
+            }
+        }
+
+        private void OpenThresholdMenu(MapComponent_RMM comp)
+        {
+            if (comp == null) return;
+            List<FloatMenuOption> opts = new List<FloatMenuOption>();
+            float[] steps = new float[] { 0.70f, 0.75f, 0.80f, 0.85f, 0.90f };
+            foreach (var v in steps)
+            {
+                float pv = v;
+                string label = "RMM_MilkExtractor_AutoThreshold_Option".Translate((pv * 100f).ToString("F0"));
+                opts.Add(new FloatMenuOption(label, () => { comp.AutoEmptyThreshold = pv; }));
+            }
+            Find.WindowStack.Add(new FloatMenu(opts));
+        }
     }
 
     public class CompProperties_AnimalMilkExtractor : CompProperties
@@ -55,6 +127,9 @@ namespace RimworldMilkingMachine
         public float ticksPerFullness = 2400f;
 
         public int minimumSessionTicks = 600;
+
+        // Total units of milk the extractor can store before requiring emptying.
+        public int storageCapacity = 0;
 
         public CompProperties_AnimalMilkExtractor()
         {
@@ -85,6 +160,12 @@ namespace RimworldMilkingMachine
 
         private bool aborted;
 
+        // Storage
+        private Dictionary<ThingDef, int> storedByDef;
+        private bool emptyingInProgress;
+        private bool emptyRequested;
+        private int nextAutoEmptyTick;
+
         public CompProperties_AnimalMilkExtractor Props => (CompProperties_AnimalMilkExtractor)props;
 
         public bool IsOccupied => currentPawn != null;
@@ -92,6 +173,14 @@ namespace RimworldMilkingMachine
         public float ProgressPercent => ticksRequired <= 0f ? 0f : Mathf.Clamp01(progressTicks / ticksRequired);
 
         private bool PowerOn => parent?.TryGetComp<CompPowerTrader>()?.PowerOn ?? true;
+
+        public int Capacity => Mathf.Max(0, Props?.storageCapacity ?? 0);
+
+        public int StoredTotal => storedByDef?.Values.Sum() ?? 0;
+
+        public bool IsFull => Capacity > 0 && StoredTotal >= Capacity;
+
+        public bool EmptyRequested => emptyRequested;
 
         public bool CanAcceptPawn(Pawn pawn)
         {
@@ -111,6 +200,12 @@ namespace RimworldMilkingMachine
             }
 
             if (!PowerOn)
+            {
+                return false;
+            }
+
+            // Block usage if full or currently being emptied.
+            if (IsFull)
             {
                 return false;
             }
@@ -187,7 +282,25 @@ namespace RimworldMilkingMachine
                 return "RMM_MilkExtractor_StatusInUse".Translate(currentPawn.LabelShortCap, ProgressPercent.ToStringPercent());
             }
 
-            return "RMM_MilkExtractor_StatusIdle".Translate();
+            string text = "RMM_MilkExtractor_StatusIdle".Translate();
+            if (Capacity > 0)
+            {
+                text += "\n" + "RMM_MilkExtractor_Stored".Translate(StoredTotal, Capacity);
+                if (IsFull)
+                {
+                    text += "\n" + "RMM_MilkExtractor_NeedsEmptying".Translate();
+                }
+                else if (emptyRequested)
+                {
+                    text += "\n" + "RMM_MilkExtractor_EmptyRequested".Translate();
+                }
+                var cfg = MapComponent_RMM.Get(parent?.Map);
+                if (cfg != null)
+                {
+                    text += "\n" + "RMM_MilkExtractor_AutoThreshold_Label".Translate((cfg.AutoEmptyThreshold * 100f).ToString("F0"));
+                }
+            }
+            return text;
         }
 
         public bool WasCompleted => completedSuccessfully;
@@ -203,6 +316,30 @@ namespace RimworldMilkingMachine
             Scribe_Values.Look(ref startingFullness, "startingFullness", 0f);
             Scribe_Values.Look(ref completedSuccessfully, "completedSuccessfully", false);
             Scribe_Values.Look(ref aborted, "aborted", false);
+            Scribe_Collections.Look(ref storedByDef, "storedByDef", LookMode.Def, LookMode.Value);
+            Scribe_Values.Look(ref emptyingInProgress, "emptyingInProgress", false);
+            Scribe_Values.Look(ref emptyRequested, "emptyRequested", false);
+            Scribe_Values.Look(ref nextAutoEmptyTick, "nextAutoEmptyTick", 0);
+        }
+
+        public override void PostDestroy(DestroyMode mode, Map previousMap)
+        {
+            // On destruction, drop stored milk to avoid loss.
+            if (storedByDef != null && storedByDef.Count > 0)
+            {
+                IntVec3 dropCell = parent?.InteractionCell.IsValid == true ? parent.InteractionCell : parent?.Position ?? IntVec3.Invalid;
+                Map map = previousMap ?? parent?.Map;
+                if (map != null && dropCell.IsValid)
+                {
+                    foreach (var kv in storedByDef.ToList())
+                    {
+                        if (kv.Value <= 0) continue;
+                        PlaceMilk(kv.Key, kv.Value, dropCell, map);
+                    }
+                }
+                storedByDef.Clear();
+            }
+            base.PostDestroy(mode, previousMap);
         }
 
         private void CompleteExtraction(Pawn pawn)
@@ -215,13 +352,22 @@ namespace RimworldMilkingMachine
                 if (totalAmount > 0 && parent.Map != null)
                 {
                     IntVec3 dropCell = parent.InteractionCell.IsValid ? parent.InteractionCell : parent.Position;
-                    PlaceMilk(compMilkable.Props.milkDef, totalAmount, dropCell, parent.Map);
+                    int overflow = StoreMilk(compMilkable.Props.milkDef, totalAmount);
+                    if (overflow > 0)
+                    {
+                        PlaceMilk(compMilkable.Props.milkDef, overflow, dropCell, parent.Map);
+                    }
                 }
 
                 SetFullness(compMilkable, Mathf.Clamp01(compMilkable.Fullness - effectiveFullness));
             }
 
             completedSuccessfully = true;
+            // Auto-request empty if we are now full and not already emptying.
+            if (IsFull)
+            {
+                TryRequestEmptyJob();
+            }
         }
 
         internal static void SetFullness(CompHasGatherableBodyResource comp, float value)
@@ -246,6 +392,82 @@ namespace RimworldMilkingMachine
                 GenPlace.TryPlaceThing(thing, cell, map, ThingPlaceMode.Near);
             }
         }
+
+        private int StoreMilk(ThingDef def, int amount)
+        {
+            if (Capacity <= 0 || amount <= 0)
+            {
+                return amount;
+            }
+
+            if (storedByDef == null)
+            {
+                storedByDef = new Dictionary<ThingDef, int>();
+            }
+
+            int available = Mathf.Max(0, Capacity - StoredTotal);
+            int toStore = Mathf.Min(available, amount);
+            if (toStore > 0)
+            {
+                int cur;
+                storedByDef.TryGetValue(def, out cur);
+                storedByDef[def] = cur + toStore;
+            }
+            return amount - toStore;
+        }
+
+        public void DropAllStoredMilk()
+        {
+            if (parent?.Map == null || StoredTotal <= 0)
+            {
+                storedByDef?.Clear();
+                return;
+            }
+            IntVec3 dropCell = parent.InteractionCell.IsValid ? parent.InteractionCell : parent.Position;
+            foreach (var kv in storedByDef.ToList())
+            {
+                if (kv.Value <= 0) continue;
+                PlaceMilk(kv.Key, kv.Value, dropCell, parent.Map);
+            }
+            storedByDef.Clear();
+        }
+
+        public void Notify_EmptyingStarted()
+        {
+            emptyingInProgress = true;
+        }
+
+        public void Notify_EmptyingFinished()
+        {
+            emptyingInProgress = false;
+            emptyRequested = false;
+            var cfg = MapComponent_RMM.Get(parent?.Map);
+            if (cfg != null)
+            {
+                nextAutoEmptyTick = Find.TickManager.TicksGame + cfg.CooldownTicks;
+            }
+        }
+
+        private void TryRequestEmptyJob()
+        {
+            if (StoredTotal > 0)
+            {
+                emptyRequested = true;
+            }
+        }
+
+        public void RequestEmpty()
+        {
+            if (StoredTotal > 0)
+            {
+                emptyRequested = true;
+            }
+        }
+
+        internal bool PastCooldownForAutoEmpty()
+        {
+            return Find.TickManager.TicksGame >= nextAutoEmptyTick;
+        }
     }
 
     public class JobDriver_UseMilkExtractor : JobDriver
@@ -256,7 +478,12 @@ namespace RimworldMilkingMachine
 
         public override bool TryMakePreToilReservations(bool errorOnFailed)
         {
-            return pawn.Reserve(job.targetA, job, 1, -1, null, errorOnFailed);
+            bool ok = pawn.Reserve(job.targetA, job, 1, -1, null, errorOnFailed);
+            if (ok && job.targetB != null && job.targetB.HasThing)
+            {
+                ok &= pawn.Reserve(job.targetB, job, 1, -1, null, errorOnFailed);
+            }
+            return ok;
         }
 
         protected override IEnumerable<Toil> MakeNewToils()
@@ -299,10 +526,6 @@ namespace RimworldMilkingMachine
             {
                 bool cancelled = !Extractor.MilkComp.WasCompleted;
                 Extractor.MilkComp.EndSession(pawn, cancelled);
-                if (pawn.MapHeld != null)
-                {
-                    pawn.MapHeld.reservationManager.Release(pawn, pawn, job);
-                }
             });
             extract.WithProgressBar(ExtractorInd, () => Extractor.MilkComp.ProgressPercent, true, -0.5f);
             yield return extract;
@@ -337,7 +560,14 @@ namespace RimworldMilkingMachine
 
             CompMilkable compMilkable = pawn.TryGetComp<CompMilkable>();
             float fullnessPercent = compMilkable?.Fullness ?? 0f;
-            if (compMilkable == null || fullnessPercent < 0.8f)
+            float minFullness = 0.8f;
+            // Read threshold from any nearby extractor comp props if available
+            var anyExtractor = pawn.Map?.listerBuildings?.AllBuildingsColonistOfClass<Building_AnimalMilkExtractor>()?.FirstOrDefault();
+            if (anyExtractor != null)
+            {
+                minFullness = anyExtractor.MilkComp?.Props?.minimumFullness ?? minFullness;
+            }
+            if (compMilkable == null || fullnessPercent < minFullness)
             {
                 LogDebug(pawn, null, compMilkable == null ? "no-comp" : "below-threshold", fullnessPercent, null);
                 return null;
@@ -358,6 +588,8 @@ namespace RimworldMilkingMachine
 
             LogDebug(pawn, extractor, "job-assigned", fullnessPercent, extractor.Position.ToString());
             Job job = JobMaker.MakeJob(RMM_DefOf.RMM_UseMilkExtractor, extractor);
+            // Reserve the animal (self) as B to discourage handler conflicts
+            job.targetB = pawn;
             job.overrideFacing = extractor.Rotation;
             return job;
         }
@@ -416,12 +648,96 @@ namespace RimworldMilkingMachine
         }
     }
 
+    public class JobDriver_EmptyMilkExtractor : JobDriver
+    {
+        private const TargetIndex ExtractorInd = TargetIndex.A;
+
+        private Building_AnimalMilkExtractor Extractor => (Building_AnimalMilkExtractor)job.GetTarget(ExtractorInd).Thing;
+
+        public override bool TryMakePreToilReservations(bool errorOnFailed)
+        {
+            return pawn.Reserve(job.targetA, job, 1, -1, null, errorOnFailed);
+        }
+
+        protected override IEnumerable<Toil> MakeNewToils()
+        {
+            this.FailOnDestroyedNullOrForbidden(ExtractorInd);
+            this.FailOn(() => Extractor?.MilkComp == null || Extractor.MilkComp.StoredTotal <= 0);
+            yield return Toils_Goto.GotoThing(ExtractorInd, PathEndMode.InteractionCell);
+
+            Toil work = ToilMaker.MakeToil("EmptyMilkExtractor");
+            work.defaultCompleteMode = ToilCompleteMode.Delay;
+            work.defaultDuration = 120;
+            work.initAction = () =>
+            {
+                Extractor.MilkComp.Notify_EmptyingStarted();
+            };
+            work.AddFinishAction(() =>
+            {
+                Extractor.MilkComp.DropAllStoredMilk();
+                Extractor.MilkComp.Notify_EmptyingFinished();
+            });
+            work.WithProgressBar(ExtractorInd, () => 1f - (work.actor?.jobs?.curDriver?.ticksLeftThisToil ?? 0) / (float)work.defaultDuration, true, -0.5f);
+            yield return work;
+        }
+    }
+
+    public class WorkGiver_EmptyMilkExtractor : WorkGiver_Scanner
+    {
+        public override bool Prioritized => true;
+
+        public override PathEndMode PathEndMode => PathEndMode.InteractionCell;
+
+        public override IEnumerable<Thing> PotentialWorkThingsGlobal(Pawn pawn)
+        {
+            var map = pawn.Map;
+            if (map == null) yield break;
+            foreach (var b in map.listerBuildings.AllBuildingsColonistOfClass<Building_AnimalMilkExtractor>())
+            {
+                yield return b;
+            }
+        }
+
+        public override bool HasJobOnThing(Pawn pawn, Thing t, bool forced = false)
+        {
+            var b = t as Building_AnimalMilkExtractor;
+            if (b == null || b.IsBurning() || b.IsForbidden(pawn)) return false;
+            var comp = b.MilkComp;
+            if (comp == null) return false;
+            if (comp.StoredTotal <= 0) return false;
+            if (comp.IsOccupied && !forced) return false;
+            var mapCfg = MapComponent_RMM.Get(pawn.Map);
+            float threshold = Mathf.Clamp01(mapCfg?.AutoEmptyThreshold ?? 0.75f);
+            bool aboveThreshold = comp.Capacity > 0 && (comp.StoredTotal / (float)comp.Capacity) >= threshold;
+            if (!(comp.IsFull || comp.EmptyRequested || forced || (aboveThreshold && comp.PastCooldownForAutoEmpty()))) return false;
+            if (comp.IsOccupied || comp.WasAborted) { /* ok to empty anyway */ }
+            if (!pawn.CanReserve(t, 1, -1, null, forced)) return false;
+            if (!pawn.CanReach(t, PathEndMode.InteractionCell, Danger.Some)) return false;
+            return true;
+        }
+
+        public override Job JobOnThing(Pawn pawn, Thing t, bool forced = false)
+        {
+            return JobMaker.MakeJob(RMM_DefOf.RMM_EmptyMilkExtractor, t);
+        }
+
+        public override float GetPriority(Pawn pawn, TargetInfo t)
+        {
+            var b = t.Thing as Building_AnimalMilkExtractor;
+            var comp = b?.MilkComp;
+            if (comp == null || comp.Capacity <= 0) return 0f;
+            return Mathf.Clamp01(comp.StoredTotal / (float)comp.Capacity);
+        }
+    }
+
     [DefOf]
     public static class RMM_DefOf
     {
         public static ThingDef RMM_MilkExtractorPad;
 
         public static JobDef RMM_UseMilkExtractor;
+
+        public static JobDef RMM_EmptyMilkExtractor;
 
         static RMM_DefOf()
         {
