@@ -5,9 +5,10 @@ Automate dairy chores with a self-service extractor pad. Milkable colony animals
 [h2]Features[/h2]
 [list]
 [*] Automated milk extractor pad unlocked via the new [i]Automated milking systems[/i] research.
-[*] Internal storage with capacity; overflow drops near the pad. Full pads block animal use until emptied.
+[*] Internal storage with capacity; overflow drops near the pad. Full pads block animal use until emptied. Silver-lined reservoirs preserve milk indefinitely.
 [*] Emptying job (Basic work): colonists dump stored milk onto the ground; right-click to prioritize. No Harmony patches used.
 [*] Refuel-style gizmo with white bar: shows X/Y milk and a vertical auto-empty marker; drag the bar to set the map-wide threshold.
+[*] Variants: standard (3x1, 75 cap), heavy (3x2, 300 cap), advanced (2× faster), and advanced heavy (2× faster, 300 cap).
 [*] Forbid-aware: forbidden pads are ignored by animals and colonists (unless forced).
 [*] Dev tool: "Fill milk fullness" to quickly test behavior.
 [/list]
@@ -15,7 +16,7 @@ Automate dairy chores with a self-service extractor pad. Milkable colony animals
 [h2]How to Use[/h2]
 [olist]
 [*] Research [i]Automated milking systems[/i].
-[*] Build the milk extractor pad from the Production tab (300 W power draw).
+[*] Build the milk extractor pad from the Production tab (small: ~30W idle / ~60W in use; heavy: ~60W idle / ~100W in use).
 [*] Keep milkable animals assigned to your colony; they will head to the pad when nearly full.
 [/olist]
 
