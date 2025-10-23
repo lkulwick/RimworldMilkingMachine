@@ -87,7 +87,8 @@ namespace RimworldMilkingMachine
                 {
                     defaultLabel = "RMM_MilkExtractor_Empty_Label".Translate(),
                     defaultDesc = "RMM_MilkExtractor_Empty_Desc".Translate(),
-                    action = () => milkComp.RequestEmpty()
+                    action = () => milkComp.RequestEmpty(),
+                    icon = TexCommand.SelectShelf
                 };
                 if (milkComp.StoredTotal <= 0)
                 {

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
-	<packageId>lukas000.rimworldmilkingmachine</packageId>
+	<packageId>Deep.rimworldmilkingmachine</packageId>
 	<name>Rimworld Milking Machine</name>
-	<author>lukas_000</author>
+	<author>Deep</author>
 	<supportedVersions>
 		<li>1.6</li>
 	</supportedVersions>

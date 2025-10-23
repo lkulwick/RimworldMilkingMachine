@@ -28,13 +28,33 @@
         <storageCapacity>75</storageCapacity>
       </li>
     </comps>
+    <building>
+      <barDrawData>
+        <north>
+          <preRotationOffset>(-0.01598358,0.0255661)</preRotationOffset>
+          <size>(0.5505219,0.1139069)</size>
+        </north>
+        <south>
+          <preRotationOffset>(0.006927488,-0.02323151)</preRotationOffset>
+          <size>(0.5479813,0.1345978)</size>
+        </south>
+        <east>
+          <preRotationOffset>(0.1157379,-0.006530767)</preRotationOffset>
+          <size>(0.4481201,0.1160278)</size>
+        </east>
+        <west>
+          <preRotationOffset>(-0.1114426,-0.005119322)</preRotationOffset>
+          <size>(0.4646759,0.1281815)</size>
+        </west>
+      </barDrawData>
+    </building>
     <drawerType>MapMeshAndRealTime</drawerType>
   </ThingDef>
 
   <ThingDef ParentName="RMM_BaseMilkExtractor">
     <defName>RMM_MilkExtractorPad</defName>
     <label>milk extractor pad</label>
-    <description>An automated pad that coaxes milkable animals to release their milk without needing a handler. Animals will voluntarily use it once they are nearly full, and the extracted milk is delivered beside the pad.</description>
+    <description>An automated pad that coaxes milkable animals to release their milk without needing a handler. Animals will voluntarily use it once they are nearly full. The extractor stores milk internally; any overflow is delivered beside the pad. A thin silver coating on the internal reservoir preserves milk indefinitely without rotting.</description>
     <graphicData>
       <texPath>Things/Building/Production/BasicRecharger</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
@@ -52,9 +72,9 @@
     </statBases>
     <size>(3,1)</size>
     <costList>
-      <Steel>140</Steel>
+      <Steel>120</Steel>
+      <Silver>20</Silver>
       <ComponentIndustrial>3</ComponentIndustrial>
-      <Plasteel>20</Plasteel>
     </costList>
     <researchPrerequisites>
       <li>RMM_AutomatedMilking</li>
@@ -80,6 +100,112 @@
         </west>
       </barDrawData>
     </building>
+  </ThingDef>
+
+  <!-- Heavy milk extractor pad: larger footprint, higher capacity and power -->
+  <ThingDef ParentName="RMM_BaseMilkExtractor">
+    <defName>RMM_MilkExtractorPad_Heavy</defName>
+    <label>heavy milk extractor pad</label>
+    <description>A larger milk extractor with expanded storage and throughput. Stores up to 300 milk internally; overflow drops near the pad.</description>
+    <graphicData>
+      <texPath>Things/Building/Production/BasicRecharger</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <drawSize>(3.4,2.2)</drawSize>
+    </graphicData>
+    <interactionCellOffset>(0,0,1)</interactionCellOffset>
+    <size>(3,2)</size>
+    <statBases>
+      <MaxHitPoints>220</MaxHitPoints>
+      <WorkToBuild>9000</WorkToBuild>
+      <Mass>60</Mass>
+      <Flammability>0.5</Flammability>
+    </statBases>
+    <costList>
+      <Steel>300</Steel>
+      <Silver>50</Silver>
+      <ComponentIndustrial>3</ComponentIndustrial>
+    </costList>
+    <comps>
+      <li Class="CompProperties_Flickable"/>
+      <li Class="CompProperties_Forbiddable"/>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>450</basePowerConsumption>
+      </li>
+      <li Class="RimworldMilkingMachine.CompProperties_AnimalMilkExtractor">
+        <minimumFullness>0.8</minimumFullness>
+        <ticksPerFullness>2400</ticksPerFullness>
+        <minimumSessionTicks>600</minimumSessionTicks>
+        <storageCapacity>300</storageCapacity>
+      </li>
+    </comps>
+    <building>
+      <barDrawData>
+        <north>
+          <preRotationOffset>(-0.01598358,0.0255661)</preRotationOffset>
+          <size>(0.5505219,0.1139069)</size>
+        </north>
+        <south>
+          <preRotationOffset>(0.006927488,-0.02323151)</preRotationOffset>
+          <size>(0.5479813,0.1345978)</size>
+        </south>
+        <east>
+          <preRotationOffset>(0.1157379,-0.006530767)</preRotationOffset>
+          <size>(0.4481201,0.1160278)</size>
+        </east>
+        <west>
+          <preRotationOffset>(-0.1114426,-0.005119322)</preRotationOffset>
+          <size>(0.4646759,0.1281815)</size>
+        </west>
+      </barDrawData>
+    </building>
+    <researchPrerequisites>
+      <li>RMM_AutomatedMilking</li>
+    </researchPrerequisites>
+  </ThingDef>
+
+  <!-- Advanced milk extractor pad: faster sessions, advanced fabrication gated -->
+  <ThingDef ParentName="RMM_BaseMilkExtractor">
+    <defName>RMM_MilkExtractorPad_Advanced</defName>
+    <label>advanced milk extractor pad</label>
+    <description>A refined extractor with improved throughput. Twice as fast as the standard model. The internal silver coating preserves milk indefinitely.</description>
+    <graphicData>
+      <texPath>Things/Building/Production/BasicRecharger</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <drawSize>(2.9,1.25)</drawSize>
+    </graphicData>
+    <interactionCellOffset>(0,0,1)</interactionCellOffset>
+    <size>(3,1)</size>
+    <statBases>
+      <MaxHitPoints>170</MaxHitPoints>
+      <WorkToBuild>8000</WorkToBuild>
+      <Mass>32</Mass>
+      <Flammability>0.5</Flammability>
+    </statBases>
+    <costList>
+      <Steel>150</Steel>
+      <Silver>20</Silver>
+      <ComponentIndustrial>3</ComponentIndustrial>
+      <ComponentSpacer>1</ComponentSpacer>
+    </costList>
+    <comps>
+      <li Class="CompProperties_Flickable"/>
+      <li Class="CompProperties_Forbiddable"/>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>300</basePowerConsumption>
+      </li>
+      <li Class="RimworldMilkingMachine.CompProperties_AnimalMilkExtractor">
+        <minimumFullness>0.8</minimumFullness>
+        <ticksPerFullness>1200</ticksPerFullness>
+        <minimumSessionTicks>300</minimumSessionTicks>
+        <storageCapacity>75</storageCapacity>
+      </li>
+    </comps>
+    <researchPrerequisites>
+      <li>RMM_AutomatedMilking</li>
+      <li>AdvancedFabrication</li>
+    </researchPrerequisites>
   </ThingDef>
 
 </Defs>
