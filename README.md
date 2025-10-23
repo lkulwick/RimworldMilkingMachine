@@ -1,4 +1,4 @@
-# Rimworld Milking Machine
+﻿# Rimworld Milking Machine
 
 An experimental RimWorld mod that automates milk collection using a dedicated extractor pad. Built on top of a Visual Studio Code template, the project compiles a .NET Framework 4.8 assembly and mirrors the packaged mod directly into the local RimWorld `Mods` directory.
 
@@ -28,4 +28,4 @@ An experimental RimWorld mod that automates milk collection using a dedicated ex
 The automated extractor is functional: animals reserve the pad, colonist milking jobs back off, and milk drops beside the pad. Further balancing (session length, thresholds) and art polish are still to-do items.
 
 ## License
-[MIT](LICENSE)
+BSD 2-Clause License
