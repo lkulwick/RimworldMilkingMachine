@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MOD_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)/RimworldMilkingMachine"
+OUTPUT_DIR="${MOD_DIR}/1.6/Assemblies"
+
+# remove unnecessary assemblies from target output directory
+mkdir -p "${OUTPUT_DIR}"
+find "${OUTPUT_DIR}" -maxdepth 1 -type f -delete
+
+# build dll
+dotnet build "${SCRIPT_DIR}/mod.csproj" -c Release
+
+TARGET_BASE="C:/Program Files (x86)/Steam/steamapps/common/RimWorld/Mods"
+TARGET_BASE_UNIX="/mnt/c/Program Files (x86)/Steam/steamapps/common/RimWorld/Mods"
+if [[ -d "${TARGET_BASE}" ]]; then
+    TARGET_DIR="${TARGET_BASE}/RimworldMilkingMachine"
+    rsync -a --delete "${MOD_DIR}/" "${TARGET_DIR}/"
+elif [[ -d "${TARGET_BASE_UNIX}" ]]; then
+    TARGET_DIR="${TARGET_BASE_UNIX}/RimworldMilkingMachine"
+    rsync -a --delete "${MOD_DIR}/" "${TARGET_DIR}/"
+fi

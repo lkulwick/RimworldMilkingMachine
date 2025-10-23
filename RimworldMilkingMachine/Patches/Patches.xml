@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Patch>
+  <Operation Class="PatchOperationSequence">
+    <operations>
+      <li Class="PatchOperationAdd">
+        <xpath>Defs/ThinkTreeDef[defName="Animal"]/thinkRoot/subNodes</xpath>
+        <value>
+          <li Class="RimworldMilkingMachine.JobGiver_UseMilkExtractor" />
+        </value>
+      </li>
+    </operations>
+  </Operation>
+</Patch>

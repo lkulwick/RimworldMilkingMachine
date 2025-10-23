@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+	<packageId>lukas000.rimworldmilkingmachine</packageId>
+	<name>Rimworld Milking Machine</name>
+	<author>lukas_000</author>
+	<supportedVersions>
+		<li>1.6</li>
+	</supportedVersions>
+
+	<modDependencies>
+		<!-- <li>
+			<packageId>brrainz.harmony</packageId>
+			<displayName>Harmony</displayName>
+			<steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+			<downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
+		</li> -->
+	</modDependencies>
+
+	<incompatibleWith>
+		<!-- <li>username.modname</li> -->
+	</incompatibleWith>
+
+	<description>
+Adds an automated milk extractor pad. Once researched, milkable colony animals will head to the pad when nearly full, lie still for a short session, and the extractor deposits their milk beside the building without requiring a handler.
+</description>
+</ModMetaData>

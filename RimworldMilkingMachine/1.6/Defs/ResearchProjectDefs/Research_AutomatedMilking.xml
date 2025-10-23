@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <ResearchProjectDef>
+    <defName>RMM_AutomatedMilking</defName>
+    <label>automated milking systems</label>
+    <description>Develops a mechanized milking pad that animals can use themselves, freeing handlers for other work.</description>
+    <baseCost>1600</baseCost>
+    <techLevel>Industrial</techLevel>
+    <prerequisites>
+      <li>Electricity</li>
+    </prerequisites>
+    <researchViewX>10</researchViewX>
+    <researchViewY>6</researchViewY>
+  </ResearchProjectDef>
+
+</Defs>

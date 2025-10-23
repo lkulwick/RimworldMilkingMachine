@@ -1,0 +1,13 @@
+/.vscode/obj
+/.vscode/bin
+/*.sln
+
+# Build outputs
+/RimworldMilkingMachine/1.6/Assemblies/
+
+# IDE-generated
+/.vs/
+/old/.vs/
+/_ilspy/
+*.suo
+*.user

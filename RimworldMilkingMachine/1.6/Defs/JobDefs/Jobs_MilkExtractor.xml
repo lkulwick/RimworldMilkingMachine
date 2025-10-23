@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <JobDef>
+    <defName>RMM_UseMilkExtractor</defName>
+    <driverClass>RimworldMilkingMachine.JobDriver_UseMilkExtractor</driverClass>
+    <reportString>using milk extractor.</reportString>
+    <casualInterruptible>true</casualInterruptible>
+    <alwaysShowWeapon>false</alwaysShowWeapon>
+    <checkOverrideOnDamage>OnlyIfInstigatorNotJobTarget</checkOverrideOnDamage>
+    <playerInterruptible>false</playerInterruptible>
+  </JobDef>
+
+</Defs>
