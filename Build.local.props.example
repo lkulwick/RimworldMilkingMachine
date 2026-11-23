@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <RimWorldDir>C:\Program Files (x86)\Steam\steamapps\common\RimWorld</RimWorldDir>
+    <DotnetPath>H:\codex\workspace-general\tools\dotnet-10\dotnet.exe</DotnetPath>
+    <ModDeployDir>C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\RimworldMilkingMachine</ModDeployDir>
+  </PropertyGroup>
+</Project>

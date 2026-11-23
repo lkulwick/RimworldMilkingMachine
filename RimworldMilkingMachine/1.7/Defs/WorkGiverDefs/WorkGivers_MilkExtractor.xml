@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <WorkGiverDef>
+    <defName>RMM_WorkGiver_EmptyMilkExtractor</defName>
+    <label>empty milk extractors</label>
+    <giverClass>RimworldMilkingMachine.WorkGiver_EmptyMilkExtractor</giverClass>
+    <workType>BasicWorker</workType>
+    <priorityInType>40</priorityInType>
+    <verb>empty</verb>
+    <gerund>emptying</gerund>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+    <scanCells>false</scanCells>
+  </WorkGiverDef>
+
+</Defs>

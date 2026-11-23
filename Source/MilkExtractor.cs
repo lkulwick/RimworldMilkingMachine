@@ -80,43 +80,104 @@ namespace RimworldMilkingMachine
             var milkComp = MilkComp;
             if (milkComp != null && milkComp.Capacity > 0)
             {
+                // Storage status gizmo (refuel-style), with white fill bar
+                yield return new Gizmo_MilkStorage(milkComp);
+
                 var cmd = new Command_Action
                 {
                     defaultLabel = "RMM_MilkExtractor_Empty_Label".Translate(),
                     defaultDesc = "RMM_MilkExtractor_Empty_Desc".Translate(),
-                    action = () => milkComp.RequestEmpty()
+                    action = () => milkComp.RequestEmpty(),
+                    icon = TexCommand.SelectShelf
                 };
                 if (milkComp.StoredTotal <= 0)
                 {
                     cmd.Disable("RMM_MilkExtractor_Empty_Disabled".Translate());
                 }
                 yield return cmd;
-
-                // Auto-empty threshold control (map-wide)
-                MapComponent_RMM comp = MapComponent_RMM.Get(Map);
-                float pct = Mathf.Clamp01(comp?.AutoEmptyThreshold ?? 0.75f) * 100f;
-                var thresholdCmd = new Command_Action
-                {
-                    defaultLabel = "RMM_MilkExtractor_AutoThreshold_Label".Translate(pct.ToString("F0")),
-                    defaultDesc = "RMM_MilkExtractor_AutoThreshold_Desc".Translate(),
-                    action = () => OpenThresholdMenu(comp)
-                };
-                yield return thresholdCmd;
             }
         }
+    }
 
-        private void OpenThresholdMenu(MapComponent_RMM comp)
+    // Simple refuel-style status gizmo showing stored milk with a white fill bar
+    public class Gizmo_MilkStorage : Gizmo
+    {
+        private readonly CompAnimalMilkExtractor comp;
+        private static readonly Color BarBG = new Color(0.18f, 0.18f, 0.18f, 1f);
+        private static readonly Color BarBorder = new Color(0.05f, 0.05f, 0.05f, 1f);
+        private static readonly Color BarFill = Color.white;
+
+        public Gizmo_MilkStorage(CompAnimalMilkExtractor comp)
         {
-            if (comp == null) return;
-            List<FloatMenuOption> opts = new List<FloatMenuOption>();
-            float[] steps = new float[] { 0.70f, 0.75f, 0.80f, 0.85f, 0.90f };
-            foreach (var v in steps)
+            this.comp = comp;
+        }
+
+        public override float GetWidth(float maxWidth)
+        {
+            return Mathf.Min(212f, maxWidth);
+        }
+
+        public override GizmoResult GizmoOnGUI(Vector2 topLeft, float maxWidth, GizmoRenderParms parms)
+        {
+            float width = GetWidth(maxWidth);
+            Rect rect = new Rect(topLeft.x, topLeft.y, width, 75f);
+            Widgets.DrawWindowBackground(rect);
+
+            Rect inner = rect.ContractedBy(6f);
+            // Header label
+            Text.Anchor = TextAnchor.UpperLeft;
+            Text.Font = GameFont.Tiny;
+            Widgets.Label(new Rect(inner.x, inner.y, inner.width, 16f), "RMM_MilkExtractor_MilkLabel".Translate());
+
+            // Bar area
+            Rect barRect = new Rect(inner.x, inner.y + 22f, inner.width, 22f);
+            // background and border
+            Widgets.DrawBoxSolidWithOutline(barRect, BarBG, BarBorder, 1);
+
+            float fill = comp.Capacity > 0 ? Mathf.Clamp01(comp.StoredTotal / (float)comp.Capacity) : 0f;
+            if (fill > 0f)
             {
-                float pv = v;
-                string label = "RMM_MilkExtractor_AutoThreshold_Option".Translate((pv * 100f).ToString("F0"));
-                opts.Add(new FloatMenuOption(label, () => { comp.AutoEmptyThreshold = pv; }));
+                Rect fillRect = new Rect(barRect.x + 2f, barRect.y + 2f, (barRect.width - 4f) * fill, barRect.height - 4f);
+                Widgets.DrawBoxSolid(fillRect, BarFill);
             }
-            Find.WindowStack.Add(new FloatMenu(opts));
+
+            // Threshold marker (refuel-style)
+            var cfg = MapComponent_RMM.Get(comp.parent?.Map);
+            if (cfg != null && comp.Capacity > 0)
+            {
+                float t = Mathf.Clamp01(cfg.AutoEmptyThreshold);
+                float x = barRect.x + 2f + (barRect.width - 4f) * t;
+                Rect mark = new Rect(x - 1f, barRect.y + 2f, 2f, barRect.height - 4f);
+                Widgets.DrawBoxSolid(mark, new Color(0.7f, 1f, 0.7f, 1f));
+                TooltipHandler.TipRegion(barRect, "RMM_MilkExtractor_AutoThreshold_Label".Translate((t * 100f).ToString("F0")));
+            }
+
+            // Centered text: X / Y
+            string amount = comp.Capacity > 0 ? ($"{comp.StoredTotal} / {comp.Capacity}") : "0 / 0";
+            Text.Anchor = TextAnchor.MiddleCenter;
+            Text.Font = GameFont.Small;
+            Widgets.Label(barRect, amount);
+
+            Text.Anchor = TextAnchor.UpperLeft;
+            Text.Font = GameFont.Small;
+            // Drag on bar to set global auto-empty threshold dynamically
+            GizmoResult result = new GizmoResult(GizmoState.Clear);
+            if (Mouse.IsOver(barRect) && Event.current != null && (Event.current.type == EventType.MouseDown || Event.current.type == EventType.MouseDrag) && Event.current.button == 0)
+            {
+                var compMap = MapComponent_RMM.Get(comp.parent?.Map);
+                if (compMap != null)
+                {
+                    float innerLeft = barRect.x + 2f;
+                    float innerRight = barRect.xMax - 2f;
+                    float rel = Mathf.InverseLerp(innerLeft, innerRight, Event.current.mousePosition.x);
+                    rel = Mathf.Clamp01(rel);
+                    // Set directly as fraction (0..1). If you prefer 70..90% range, map: rel = Mathf.Lerp(0.70f, 0.90f, rel);
+                    compMap.AutoEmptyThreshold = rel;
+                }
+                Event.current.Use();
+                result = new GizmoResult(GizmoState.Interacted);
+            }
+            return result;
         }
     }
 
@@ -204,7 +265,13 @@ namespace RimworldMilkingMachine
                 return false;
             }
 
-            // Block usage if full or currently being emptied.
+            // Respect forbid: if the pad is forbidden to this pawn/faction, don't use it
+            if (parent.IsForbidden(pawn))
+            {
+                return false;
+            }
+
+            // Block usage if full
             if (IsFull)
             {
                 return false;
@@ -219,12 +286,27 @@ namespace RimworldMilkingMachine
             return compMilkable.Fullness >= Props.minimumFullness;
         }
 
+        public override void PostSpawnSetup(bool respawningAfterLoad)
+        {
+            base.PostSpawnSetup(respawningAfterLoad);
+            // Ensure power draw reflects current state on spawn/load
+            if (IsOccupied)
+            {
+                ApplyActivePowerUsage();
+            }
+            else
+            {
+                ApplyIdlePowerUsage();
+            }
+        }
+
         public void BeginSession(Pawn pawn)
         {
             currentPawn = pawn;
             progressTicks = 0f;
             completedSuccessfully = false;
             aborted = false;
+            ApplyActivePowerUsage();
 
             CompMilkable compMilkable = pawn.TryGetComp<CompMilkable>();
             startingFullness = compMilkable?.Fullness ?? 0f;
@@ -273,6 +355,7 @@ namespace RimworldMilkingMachine
             startingFullness = 0f;
             completedSuccessfully = false;
             aborted = false;
+            ApplyIdlePowerUsage();
         }
 
         public string GetInspectString()
@@ -369,6 +452,24 @@ namespace RimworldMilkingMachine
                 TryRequestEmptyJob();
             }
         }
+
+        private void ApplyIdlePowerUsage()
+        {
+            var pow = parent?.TryGetComp<CompPowerTrader>();
+            if (pow == null) return;
+            float watts = IsBigVariant ? 60f : 30f;
+            pow.PowerOutput = -watts;
+        }
+
+        private void ApplyActivePowerUsage()
+        {
+            var pow = parent?.TryGetComp<CompPowerTrader>();
+            if (pow == null) return;
+            float watts = IsBigVariant ? 100f : 60f;
+            pow.PowerOutput = -watts;
+        }
+
+        private bool IsBigVariant => Capacity >= 300;
 
         internal static void SetFullness(CompHasGatherableBodyResource comp, float value)
         {
@@ -503,7 +604,7 @@ namespace RimworldMilkingMachine
                 Extractor.MilkComp.BeginSession(pawn);
                 if (!pawn.Reserve(pawn, job, 1, -1, null, false))
                 {
-                    Log.Message($"RMM debug: {pawn.LabelShort} could not self-reserve during extractor job.");
+                    RMMDebug.Message($"RMM debug: {pawn.LabelShort} could not self-reserve during extractor job.");
                     EndJobWith(JobCondition.Incompletable);
                 }
             };
@@ -536,14 +637,14 @@ namespace RimworldMilkingMachine
     {
         static JobGiver_UseMilkExtractor()
         {
-            Log.Message("RMM debug: JobGiver_UseMilkExtractor initialized.");
+            RMMDebug.Message("RMM debug: JobGiver_UseMilkExtractor initialized.");
         }
 
         protected override Job TryGiveJob(Pawn pawn)
         {
             if (pawn != null && pawn.RaceProps != null && pawn.RaceProps.Animal)
             {
-                Log.Message("RMM debug: evaluating pawn " + pawn.LabelShort + " (faction=" + (pawn.Faction?.ToString() ?? "none") + ")");
+                RMMDebug.Message("RMM debug: evaluating pawn " + pawn.LabelShort + " (faction=" + (pawn.Faction?.ToString() ?? "none") + ")");
             }
 
             if (pawn == null || pawn.Faction == null || pawn.Downed || pawn.Dead)
@@ -573,6 +674,18 @@ namespace RimworldMilkingMachine
                 return null;
             }
 
+            if (!pawn.CanReserve(pawn, 1, -1, null, false))
+            {
+                LogDebug(pawn, null, "self-reserved", fullnessPercent, null);
+                return null;
+            }
+
+            if (pawn.roping != null && pawn.roping.IsRoped)
+            {
+                LogDebug(pawn, null, "roped", fullnessPercent, null);
+                return null;
+            }
+
             Building_AnimalMilkExtractor extractor = FindClosestExtractor(pawn, compMilkable);
             if (extractor == null)
             {
@@ -580,7 +693,7 @@ namespace RimworldMilkingMachine
                 return null;
             }
 
-            if (!pawn.CanReserve(extractor, 1, -1, null, false))
+            if (extractor.IsForbidden(pawn) || !pawn.CanReserve(extractor, 1, -1, null, false))
             {
                 LogDebug(pawn, extractor, "already-reserved", fullnessPercent, null);
                 return null;
@@ -610,7 +723,23 @@ namespace RimworldMilkingMachine
                     return false;
                 }
 
-                return candidate.CanAcceptPawn(pawn);
+                if (candidate.IsForbidden(pawn))
+                {
+                    return false;
+                }
+                if (!candidate.CanAcceptPawn(pawn))
+                {
+                    return false;
+                }
+                if (!pawn.CanReserve(candidate, 1, -1, null, false))
+                {
+                    return false;
+                }
+                if (!pawn.CanReach(candidate, PathEndMode.InteractionCell, Danger.Some))
+                {
+                    return false;
+                }
+                return true;
             };
 
             Thing found = GenClosest.ClosestThingReachable(
@@ -644,7 +773,7 @@ namespace RimworldMilkingMachine
                 message += " extra=" + extra;
             }
 
-            Log.Message(message);
+            RMMDebug.Message(message);
         }
     }
 
@@ -780,7 +909,7 @@ namespace RimworldMilkingMachine
                 ThinkTreeDef animalTree = DefDatabase<ThinkTreeDef>.GetNamedSilentFail("Animal");
                 if (animalTree == null)
                 {
-                    Log.Warning("RMM debug: Animal think tree not found.");
+                    RMMDebug.Warning("RMM debug: Animal think tree not found.");
                     return;
                 }
 
@@ -805,23 +934,23 @@ namespace RimworldMilkingMachine
                 {
                     var node = new JobGiver_UseMilkExtractor();
                     priorityRoot.subNodes.Insert(desiredIndex, node);
-                    Log.Message("RMM debug: inserted milk extractor job giver at index " + desiredIndex);
+                    RMMDebug.Message("RMM debug: inserted milk extractor job giver at index " + desiredIndex);
                 }
                 else if (existingIndex > desiredIndex)
                 {
                     ThinkNode node = priorityRoot.subNodes[existingIndex];
                     priorityRoot.subNodes.RemoveAt(existingIndex);
                     priorityRoot.subNodes.Insert(desiredIndex, node);
-                    Log.Message($"RMM debug: moved milk extractor job giver from index {existingIndex} to {desiredIndex}");
+                    RMMDebug.Message($"RMM debug: moved milk extractor job giver from index {existingIndex} to {desiredIndex}");
                 }
                 else
                 {
-                    Log.Message("RMM debug: milk extractor job giver already at priority index " + existingIndex);
+                    RMMDebug.Message("RMM debug: milk extractor job giver already at priority index " + existingIndex);
                 }
             }
             catch (Exception ex)
             {
-                Log.Error("RMM debug: Exception while inspecting think tree: " + ex);
+                RMMDebug.Error("RMM debug: Exception while inspecting think tree: " + ex);
             }
         }
 

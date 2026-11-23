@@ -13,4 +13,5 @@
   <RMM_MilkExtractor_AutoThreshold_Label>Auto-empty at: {0}%</RMM_MilkExtractor_AutoThreshold_Label>
   <RMM_MilkExtractor_AutoThreshold_Desc>Choose the fullness level at which colonists will automatically empty the milk extractor (applies to all milk extractors on this map).</RMM_MilkExtractor_AutoThreshold_Desc>
   <RMM_MilkExtractor_AutoThreshold_Option>Set to {0}%</RMM_MilkExtractor_AutoThreshold_Option>
+  <RMM_MilkExtractor_MilkLabel>Milk</RMM_MilkExtractor_MilkLabel>
 </LanguageData>
