@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\Build.local.props" Condition="Exists('..\Build.local.props')" />
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>RimworldMilkingMachine</RootNamespace>
+    <AssemblyName>RimworldMilkingMachine</AssemblyName>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>0.1.0.0</Version>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>..\RimworldMilkingMachine\1.7\Assemblies\</OutputPath>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <RimWorldDir Condition="'$(RimWorldDir)' == ''">$(RIMWORLD_DIR)</RimWorldDir>
+    <ModDeployDir Condition="'$(ModDeployDir)' == ''">$(RimWorldDir)\Mods\RimworldMilkingMachine</ModDeployDir>
+    <DeployMod Condition="'$(DeployMod)' == ''">true</DeployMod>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\Source\**\*.cs" />
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(RimWorldDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityStubs">
+      <HintPath>$(RimWorldDir)\UnityStubs.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <Target Name="ValidateGameReferences" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(RimWorldDir)\Assembly-CSharp.dll')" Text="Set RimWorldDir in Build.local.props to the RimWorld 1.7 installation folder (see Build.local.props.example)." />
+    <Error Condition="!Exists('$(RimWorldDir)\UnityStubs.dll')" Text="UnityStubs.dll is missing. This project builds against RimWorld 1.7; do not point it at the 1.6 Managed folder." />
+  </Target>
+  <Target Name="CopyVersionedDefinitions" AfterTargets="Build" BeforeTargets="DeployLocalMod">
+    <ItemGroup>
+      <VersionedDef Include="$(MSBuildProjectDirectory)\..\RimworldMilkingMachine\1.6\Defs\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(VersionedDef)" DestinationFiles="@(VersionedDef->'$(MSBuildProjectDirectory)\..\RimworldMilkingMachine\1.7\Defs\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="DeployLocalMod" AfterTargets="Build" Condition="'$(DeployMod)' == 'true'">
+    <ItemGroup>
+      <ModContent Include="$(MSBuildProjectDirectory)\..\RimworldMilkingMachine\**\*" Exclude="$(MSBuildProjectDirectory)\..\RimworldMilkingMachine\packages\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ModContent)" DestinationFiles="@(ModContent->'$(ModDeployDir)\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

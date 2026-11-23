@@ -11,3 +11,10 @@
 /_ilspy/
 *.suo
 *.user
+
+# Local build paths and IDE cache
+Build.local.props
+.vs/
+.vscode/obj/
+.vscode/bin/
+!/*.sln

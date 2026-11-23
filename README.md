@@ -1,6 +1,6 @@
-﻿# Rimworld Milking Machine
+# Rimworld Milking Machine
 
-A RimWorld mod that automates milk collection using a dedicated extractor pad. Built on top of a Visual Studio Code template, the project compiles a .NET Framework 4.8 assembly and mirrors the packaged mod directly into the local RimWorld `Mods` directory.
+A RimWorld mod that automates milk collection using a dedicated extractor pad. The project builds a .NET 10 assembly for RimWorld 1.7 from Visual Studio 2022 and copies the packaged mod into the local RimWorld `Mods` directory.
 
 ## Features
 - Automated milking pad - Milkable colony animals walk themselves to the extractor once they are full enough and finish a short session on the pad.
@@ -28,11 +28,25 @@ A RimWorld mod that automates milk collection using a dedicated extractor pad. B
 - `RimworldMilkingMachine/` - Packaged mod assets (Defs, About, Languages, Patches).
 - `.vscode/` - Build scripts, project file, and launch configuration used by VS Code.
 
-## Building
-1. Ensure the .NET SDK capable of targeting `net48` is installed (Visual Studio Build Tools or Visual Studio).
-2. Run the VS Code build task (`Terminal -> Run Build Task... -> BuildWindowsDLL`) or execute `.vscode\build.bat`.
-3. The script compiles `RimworldMilkingMachine.dll` to `RimworldMilkingMachine/1.6/Assemblies` and mirrors the entire mod folder into the Steam RimWorld `Mods` directory.
-4. If RimWorld is running, the script looks for `RimworldMilkingMachine\.rmm_lock` in the target folder and aborts with a warning so you can close the game before copying.
+## Building and testing locally (RimWorld 1.7)
+Open `RimworldMilkingMachine.sln` in Visual Studio 2022 and use **Build Solution** (Ctrl+Shift+B),
+**Rebuild Solution**, or **Clean Solution**. The IDE project delegates the actual
+.NET 10 compilation to `.vscode/mod.Build.csproj`; its .NET Framework dropdown
+belongs only to the VS 2022 editor adapter.
+
+Copy `Build.local.props.example` to `Build.local.props` and adjust the game and
+SDK paths. This machine is already configured. The local props file is ignored
+by Git. The .NET 10 SDK is shared with the DrillUntil setup.
+
+Debug and Release write `RimworldMilkingMachine/1.7/Assemblies/RimworldMilkingMachine.dll`
+and automatically copy the mod to `RimWorldDir/Mods/RimworldMilkingMachine`.
+Override `ModDeployDir` in the local props file to change the destination.
+The optional `./build.ps1 -NoDeploy` command builds without deploying.
+The existing 1.6 DLL is preserved and is not rebuilt by this project.
+Close RimWorld before rebuilding; restart the game to load a new DLL.
+Compilation and deployment do not replace an in-game behavior test.
+
+No Harmony dependency is needed. Shared definitions are copied from `1.6/Defs` to `1.7/Defs` during each build; edit the source definitions in `1.6/Defs`.
 
 ## Debugging
 - Enable RimWorld dev mode to view the `RMM debug:` log messages that trace the animal job decisions.

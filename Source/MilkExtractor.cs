@@ -604,7 +604,7 @@ namespace RimworldMilkingMachine
                 Extractor.MilkComp.BeginSession(pawn);
                 if (!pawn.Reserve(pawn, job, 1, -1, null, false))
                 {
-                    Log.Message($"RMM debug: {pawn.LabelShort} could not self-reserve during extractor job.");
+                    RMMDebug.Message($"RMM debug: {pawn.LabelShort} could not self-reserve during extractor job.");
                     EndJobWith(JobCondition.Incompletable);
                 }
             };
@@ -637,14 +637,14 @@ namespace RimworldMilkingMachine
     {
         static JobGiver_UseMilkExtractor()
         {
-            Log.Message("RMM debug: JobGiver_UseMilkExtractor initialized.");
+            RMMDebug.Message("RMM debug: JobGiver_UseMilkExtractor initialized.");
         }
 
         protected override Job TryGiveJob(Pawn pawn)
         {
             if (pawn != null && pawn.RaceProps != null && pawn.RaceProps.Animal)
             {
-                Log.Message("RMM debug: evaluating pawn " + pawn.LabelShort + " (faction=" + (pawn.Faction?.ToString() ?? "none") + ")");
+                RMMDebug.Message("RMM debug: evaluating pawn " + pawn.LabelShort + " (faction=" + (pawn.Faction?.ToString() ?? "none") + ")");
             }
 
             if (pawn == null || pawn.Faction == null || pawn.Downed || pawn.Dead)
@@ -671,6 +671,18 @@ namespace RimworldMilkingMachine
             if (compMilkable == null || fullnessPercent < minFullness)
             {
                 LogDebug(pawn, null, compMilkable == null ? "no-comp" : "below-threshold", fullnessPercent, null);
+                return null;
+            }
+
+            if (!pawn.CanReserve(pawn, 1, -1, null, false))
+            {
+                LogDebug(pawn, null, "self-reserved", fullnessPercent, null);
+                return null;
+            }
+
+            if (pawn.roping != null && pawn.roping.IsRoped)
+            {
+                LogDebug(pawn, null, "roped", fullnessPercent, null);
                 return null;
             }
 
@@ -761,7 +773,7 @@ namespace RimworldMilkingMachine
                 message += " extra=" + extra;
             }
 
-            Log.Message(message);
+            RMMDebug.Message(message);
         }
     }
 
@@ -897,7 +909,7 @@ namespace RimworldMilkingMachine
                 ThinkTreeDef animalTree = DefDatabase<ThinkTreeDef>.GetNamedSilentFail("Animal");
                 if (animalTree == null)
                 {
-                    Log.Warning("RMM debug: Animal think tree not found.");
+                    RMMDebug.Warning("RMM debug: Animal think tree not found.");
                     return;
                 }
 
@@ -922,23 +934,23 @@ namespace RimworldMilkingMachine
                 {
                     var node = new JobGiver_UseMilkExtractor();
                     priorityRoot.subNodes.Insert(desiredIndex, node);
-                    Log.Message("RMM debug: inserted milk extractor job giver at index " + desiredIndex);
+                    RMMDebug.Message("RMM debug: inserted milk extractor job giver at index " + desiredIndex);
                 }
                 else if (existingIndex > desiredIndex)
                 {
                     ThinkNode node = priorityRoot.subNodes[existingIndex];
                     priorityRoot.subNodes.RemoveAt(existingIndex);
                     priorityRoot.subNodes.Insert(desiredIndex, node);
-                    Log.Message($"RMM debug: moved milk extractor job giver from index {existingIndex} to {desiredIndex}");
+                    RMMDebug.Message($"RMM debug: moved milk extractor job giver from index {existingIndex} to {desiredIndex}");
                 }
                 else
                 {
-                    Log.Message("RMM debug: milk extractor job giver already at priority index " + existingIndex);
+                    RMMDebug.Message("RMM debug: milk extractor job giver already at priority index " + existingIndex);
                 }
             }
             catch (Exception ex)
             {
-                Log.Error("RMM debug: Exception while inspecting think tree: " + ex);
+                RMMDebug.Error("RMM debug: Exception while inspecting think tree: " + ex);
             }
         }
 
